@@ -601,42 +601,53 @@
     }
 
     function renderForm(data, userProfile) {
-      renderCaseHeader(data);
+      try {
+        setLoadingText('Rendering form: header...');
+        renderCaseHeader(data);
 
-      // Set date min to today
-      document.getElementById('input-date').min = todayString();
+        setLoadingText('Rendering form: date/time inputs...');
+        document.getElementById('input-date').min = todayString();
 
-      // Initialize stepper bounds
-      participantCount = data.min_participants;
-      updateStepperUI(data.min_participants, data.max_participants);
-      updateParticipantNames(participantCount, userProfile.displayName);
+        setLoadingText('Rendering form: participants...');
+        participantCount = data.min_participants;
+        updateStepperUI(data.min_participants, data.max_participants);
 
-      // Stepper events
-      document.getElementById('stepper-minus').addEventListener('click', () => {
-        if (participantCount > data.min_participants) {
-          participantCount--;
-          updateStepperUI(data.min_participants, data.max_participants);
-          updateParticipantNames(participantCount, userProfile.displayName);
-        }
-      });
+        setLoadingText('Rendering form: name inputs...');
+        updateParticipantNames(participantCount, userProfile.displayName);
 
-      document.getElementById('stepper-plus').addEventListener('click', () => {
-        if (participantCount < data.max_participants) {
-          participantCount++;
-          updateStepperUI(data.min_participants, data.max_participants);
-          updateParticipantNames(participantCount, userProfile.displayName);
-        }
-      });
-
-      // Checkbox visual feedback
-      ['check1', 'check2'].forEach((id, i) => {
-        document.getElementById(id).addEventListener('change', function() {
-          document.getElementById(`label-check${i + 1}`).classList.toggle('checked', this.checked);
+        document.getElementById('stepper-minus').addEventListener('click', () => {
+          if (participantCount > data.min_participants) {
+            participantCount--;
+            updateStepperUI(data.min_participants, data.max_participants);
+            updateParticipantNames(participantCount, userProfile.displayName);
+          }
         });
-      });
 
-      // Submit
-      document.getElementById('btn-submit').addEventListener('click', handleSubmit);
+        document.getElementById('stepper-plus').addEventListener('click', () => {
+          if (participantCount < data.max_participants) {
+            participantCount++;
+            updateStepperUI(data.min_participants, data.max_participants);
+            updateParticipantNames(participantCount, userProfile.displayName);
+          }
+        });
+
+        setLoadingText('Rendering form: checkboxes...');
+        ['check1', 'check2'].forEach((id, i) => {
+          document.getElementById(id).addEventListener('change', function() {
+            document.getElementById(`label-check${i + 1}`).classList.toggle('checked', this.checked);
+          });
+        });
+
+        setLoadingText('Rendering form: submit button...');
+        document.getElementById('btn-submit').addEventListener('click', handleSubmit);
+
+        setLoadingText('Form rendered, switching display...');
+        document.getElementById('loading').hidden = true;
+        document.getElementById('app').hidden = false;
+
+      } catch (err) {
+        showError('renderForm failed: ' + err.message, err);
+      }
     }
 
     function updateStepperUI(min, max) {
@@ -767,9 +778,7 @@
 
         setLoadingText('Rendering form...');
         renderForm(caseData, profile);
-
-        document.getElementById('loading').hidden = true;
-        document.getElementById('app').hidden = false;
+        // display switching is handled inside renderForm
 
       } catch (err) {
         showError('Failed to initialize: ' + err.message, err);
