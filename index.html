@@ -12,6 +12,9 @@
       padding: 0;
     }
 
+    /* Ensure hidden attribute always wins over ID/class display rules */
+    [hidden] { display: none !important; }
+
     :root {
       --primary: #7BA098;
       --accent: #9FD9C0;
@@ -420,7 +423,7 @@
 <body>
 
   <!-- Loading state -->
-  <div id="loading">
+  <div id="loading" style="display: flex;">
     <div class="spinner"></div>
     <p class="loading-text">Loading...</p>
   </div>
@@ -536,9 +539,11 @@
     }
 
     function showError(message, err) {
-      document.getElementById('loading').hidden = true;
-      document.getElementById('app').hidden = true;
-      document.getElementById('error').hidden = false;
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('app').style.display = 'none';
+      const errorEl = document.getElementById('error');
+      errorEl.removeAttribute('hidden');
+      errorEl.style.display = 'flex';
       document.getElementById('error-message').textContent = message;
 
       const stackEl = document.getElementById('error-stack');
@@ -642,8 +647,13 @@
         document.getElementById('btn-submit').addEventListener('click', handleSubmit);
 
         setLoadingText('Form rendered, switching display...');
-        document.getElementById('loading').hidden = true;
-        document.getElementById('app').hidden = false;
+        const loadingEl = document.getElementById('loading');
+        const appEl = document.getElementById('app');
+        console.log('[renderForm] complete. loading:', loadingEl, 'app:', appEl);
+        loadingEl.style.display = 'none';
+        appEl.removeAttribute('hidden');
+        appEl.style.display = 'block';
+        console.log('[renderForm] display switched. loading:', loadingEl.style.display, 'app:', appEl.style.display);
 
       } catch (err) {
         showError('renderForm failed: ' + err.message, err);
