@@ -646,14 +646,7 @@
         setLoadingText('Rendering form: submit button...');
         document.getElementById('btn-submit').addEventListener('click', handleSubmit);
 
-        setLoadingText('Form rendered, switching display...');
-        const loadingEl = document.getElementById('loading');
-        const appEl = document.getElementById('app');
-        console.log('[renderForm] complete. loading:', loadingEl, 'app:', appEl);
-        loadingEl.style.display = 'none';
-        appEl.removeAttribute('hidden');
-        appEl.style.display = 'block';
-        console.log('[renderForm] display switched. loading:', loadingEl.style.display, 'app:', appEl.style.display);
+        setLoadingText('Form rendered. Done.');
 
       } catch (err) {
         showError('renderForm failed: ' + err.message, err);
@@ -788,7 +781,28 @@
 
         setLoadingText('Rendering form...');
         renderForm(caseData, profile);
-        // display switching is handled inside renderForm
+
+        // 100ms delay to let DOM settle before switching display
+        await new Promise(r => setTimeout(r, 100));
+
+        // Remove loading element entirely to bypass any CSS conflicts
+        const loadingEl = document.getElementById('loading');
+        if (loadingEl) loadingEl.remove();
+
+        // Show app with every available method
+        const appEl = document.getElementById('app');
+        if (appEl) {
+          appEl.removeAttribute('hidden');
+          appEl.hidden = false;
+          appEl.style.display = 'block';
+          appEl.style.visibility = 'visible';
+          appEl.style.opacity = '1';
+        }
+
+        console.log('Display switch complete. appEl:', appEl);
+        document.body.insertAdjacentHTML('beforeend',
+          '<div style="position:fixed;top:0;left:0;background:red;color:white;padding:8px;z-index:9999;font-size:12px;">DEBUG: Switch done. App: ' +
+          (appEl ? 'exists' : 'NULL') + '</div>');
 
       } catch (err) {
         showError('Failed to initialize: ' + err.message, err);
