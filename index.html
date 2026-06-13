@@ -493,6 +493,13 @@
       pointer-events: none;
     }
 
+    .cal-cell.closed {
+      color: #CBD5E0;
+      background: #F7FAFC;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
     .cal-cell.today { border-color: var(--primary); font-weight: 700; }
 
     .cal-cell.selected {
@@ -646,6 +653,7 @@
     let selectedTime = '';
     let calendarYear = 0;
     let calendarMonth = 0;
+    let closedDays = [];
 
     // ==================== Utilities ====================
     function setLoadingText(text) {
@@ -696,28 +704,43 @@
     }
 
     // ==================== Date/Time Picker ====================
-    function parseBusinessHours(hoursStr) {
-      const match = (hoursStr || '').match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
-      if (!match) return { startH: 11, startM: 0, endH: 22, endM: 0 };
-      return {
-        startH: parseInt(match[1], 10),
-        startM: parseInt(match[2], 10),
-        endH: parseInt(match[3], 10),
-        endM: parseInt(match[4], 10),
-      };
+    function parseTimeToMinutes(timeStr) {
+      const [h, m] = (timeStr || '0:0').split(':').map(Number);
+      return h * 60 + m;
     }
 
-    function buildTimeSlots(hoursStr) {
-      const { startH, startM, endH, endM } = parseBusinessHours(hoursStr);
+    function formatMinutesToTime(min) {
+      return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+    }
+
+    function generateTimeSlots(businessHours) {
       const slots = [];
-      let h = startH, m = startM;
-      const endTotal = endH * 60 + endM - 30;
-      while (h * 60 + m <= endTotal) {
-        slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
-        m += 30;
-        if (m >= 60) { m -= 60; h++; }
+      const ranges = (businessHours || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (ranges.length === 0) ranges.push('11:00-22:00');
+      for (const range of ranges) {
+        const parts = range.split('-').map(s => s.trim());
+        if (parts.length < 2) continue;
+        let current = parseTimeToMinutes(parts[0]);
+        const endMin = parseTimeToMinutes(parts[1]);
+        while (current < endMin) {
+          slots.push(formatMinutesToTime(current));
+          current += 30;
+        }
       }
       return slots;
+    }
+
+    function formatBusinessHoursDisplay(str) {
+      return (str || '').split(',').map(s => s.trim()).join(' / ');
+    }
+
+    function parseClosedDays(str) {
+      if (!str) return [];
+      const dowMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+      return str.split(',').map(s => s.trim()).map(item => {
+        if (/^\d+$/.test(item)) return Number(item);
+        return dowMap[item] !== undefined ? dowMap[item] : null;
+      }).filter(n => n !== null);
     }
 
     function renderCalendar() {
@@ -756,12 +779,14 @@
         const dow = dateObj.getDay();
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const isPast = dateObj < today;
+        const isClosed = closedDays.includes(dow);
         const isToday = dateStr === todayStr;
         const isSelected = dateStr === selectedDate;
 
         let cls = 'cal-cell';
         if (isPast) cls += ' past';
-        if (isToday) cls += ' today';
+        else if (isClosed) cls += ' closed';
+        if (isToday && !isClosed) cls += ' today';
         if (isSelected) cls += ' selected';
         if (dow === 0) cls += ' sun';
         if (dow === 6) cls += ' sat';
@@ -792,7 +817,7 @@
     }
 
     function renderTimeSlots(hoursStr) {
-      const slots = buildTimeSlots(hoursStr);
+      const slots = generateTimeSlots(hoursStr);
       const container = document.getElementById('time-slots');
       let html = '<div class="time-slots">';
       for (const slot of slots) {
@@ -810,17 +835,18 @@
       });
     }
 
-    // ==================== Mock API ====================
+    // ==================== API ====================
     async function fetchCaseData(caseId) {
-      return {
-        case_id: caseId,
-        title: 'Sample Case Title',
-        area: 'Osaka',
-        image_url: '',
-        business_hours: '11:00 - 22:00',
-        min_participants: 1,
-        max_participants: 4,
-      };
+      const url = GAS_URL + '?action=get_case&case_id=' + encodeURIComponent(caseId);
+      const response = await fetch(url, { method: 'GET' });
+      if (!response.ok) {
+        throw new Error('Failed to fetch case (HTTP ' + response.status + ')');
+      }
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load case');
+      }
+      return data.case;
     }
 
     // ==================== Render ====================
@@ -840,7 +866,7 @@
             </div>
             <div class="case-meta-row">
               <span class="case-meta-icon">🕐</span>
-              <span>${data.business_hours}</span>
+              <span>${formatBusinessHoursDisplay(data.business_hours)}</span>
             </div>
           </div>
         </div>`;
@@ -852,6 +878,7 @@
         renderCaseHeader(data);
 
         setLoadingText('Rendering form: date/time inputs...');
+        closedDays = parseClosedDays(data.closed_days);
         const now = new Date();
         calendarYear = now.getFullYear();
         calendarMonth = now.getMonth();
