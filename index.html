@@ -630,12 +630,14 @@
 
       <!-- Submit -->
       <div class="submit-wrap">
-        <button class="btn-submit" id="btn-submit" type="button">Apply Now</button>
+        <button class="btn-submit" id="submit-button" type="button">Apply Now</button>
       </div>
     </div>
   </div>
 
   <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbzv4n1spP06DpnGJkNodjkl9RP9l21jLrz_klkdlK-flP2w0K1kGXzSre3Q7jkj9Dbe/exec';
+
     // ==================== State ====================
     let caseData = null;
     let profile = null;
@@ -675,9 +677,14 @@
       }
     }
 
-    function showSuccess() {
-      document.getElementById('btn-submit').disabled = true;
-      document.getElementById('success-banner').classList.add('visible');
+    function showSuccess(message) {
+      message = message || 'Application submitted!';
+      document.getElementById('app').innerHTML = `
+        <div style="text-align:center;padding:60px 20px;">
+          <div style="font-size:60px;margin-bottom:20px;">✅</div>
+          <h2 style="color:#2D3748;font-size:20px;margin-bottom:8px;">${message}</h2>
+          <p style="color:#718096;font-size:14px;">Closing window...</p>
+        </div>`;
     }
 
     function todayString() {
@@ -805,7 +812,6 @@
 
     // ==================== Mock API ====================
     async function fetchCaseData(caseId) {
-      // Placeholder — will be replaced with GAS API call in Step 4
       return {
         case_id: caseId,
         title: 'Sample Case Title',
@@ -883,7 +889,7 @@
         });
 
         setLoadingText('Rendering form: submit button...');
-        document.getElementById('btn-submit').addEventListener('click', handleSubmit);
+        document.getElementById('submit-button').addEventListener('click', handleSubmit);
 
         setLoadingText('Form rendered. Done.');
 
@@ -961,7 +967,6 @@
 
     // ==================== Submit ====================
     async function handleSubmit() {
-      // Hide previous errors
       document.getElementById('form-error').classList.remove('visible');
 
       if (!validate()) return;
@@ -970,6 +975,7 @@
       const participantNames = Array.from(nameInputs).map(el => el.value.trim());
 
       const formData = {
+        action: 'apply',
         case_id: caseData.case_id,
         user_id: profile.userId,
         display_name: profile.displayName,
@@ -979,15 +985,28 @@
         participant_names: participantNames,
       };
 
-      console.log('Submit data:', formData);
+      const submitBtn = document.getElementById('submit-button');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
 
-      // Step 4: replace console.log with GAS API call
-      // await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(formData) });
+      try {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(formData),
+        });
 
-      showSuccess();
-      setTimeout(() => {
-        try { liff.closeWindow(); } catch (_) {}
-      }, 2000);
+        // no-cors mode: response body is opaque, assume success
+        showSuccess('Application submitted!');
+        setTimeout(() => { try { liff.closeWindow(); } catch (_) {} }, 2000);
+
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Apply Now';
+        document.getElementById('form-error').textContent = 'Failed to submit: ' + err.message;
+        document.getElementById('form-error').classList.add('visible');
+      }
     }
 
     // ==================== Init ====================
