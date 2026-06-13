@@ -418,6 +418,122 @@
       color: #38A169;
       margin-top: 4px;
     }
+
+    /* ==================== Calendar ==================== */
+    .cal-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .cal-nav-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-sm);
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      line-height: 1;
+    }
+
+    .cal-nav-btn:active { background: var(--border); }
+
+    .cal-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+    }
+
+    .cal-day-header {
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #718096;
+    }
+
+    .cal-day-header.sun { color: #FC8181; }
+    .cal-day-header.sat { color: #76C5E0; }
+
+    .cal-cell {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: background 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .cal-cell.empty { cursor: default; pointer-events: none; }
+
+    .cal-cell.past {
+      color: #CBD5E0;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .cal-cell.today { border-color: var(--primary); font-weight: 700; }
+
+    .cal-cell.selected {
+      background: var(--primary);
+      color: #fff !important;
+      font-weight: 700;
+    }
+
+    .cal-cell.sun:not(.selected) { color: #FC8181; }
+    .cal-cell.sat:not(.selected) { color: #76C5E0; }
+
+    .cal-cell:not(.past):not(.empty):not(.selected):hover { background: #EDF8F4; }
+
+    /* ==================== Time Slots ==================== */
+    .time-slots {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .time-slot-btn {
+      height: 44px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.1s, border-color 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .time-slot-btn:active { background: var(--accent); }
+
+    .time-slot-btn.selected {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -450,13 +566,13 @@
         </div>
         <div class="section-body">
           <div class="field">
-            <label class="field-label" for="input-date">Date</label>
-            <input class="field-input" type="date" id="input-date">
+            <label class="field-label">Date</label>
+            <div id="calendar"></div>
             <span class="field-error" id="err-date">Please select a date.</span>
           </div>
           <div class="field">
-            <label class="field-label" for="input-time">Time</label>
-            <input class="field-input" type="time" id="input-time">
+            <label class="field-label">Time</label>
+            <div id="time-slots"></div>
             <span class="field-error" id="err-time">Please select a time.</span>
           </div>
         </div>
@@ -524,6 +640,10 @@
     let caseData = null;
     let profile = null;
     let participantCount = 1;
+    let selectedDate = '';
+    let selectedTime = '';
+    let calendarYear = 0;
+    let calendarMonth = 0;
 
     // ==================== Utilities ====================
     function setLoadingText(text) {
@@ -566,6 +686,121 @@
       const mm = String(d.getMonth() + 1).padStart(2, '0');
       const dd = String(d.getDate()).padStart(2, '0');
       return `${yyyy}-${mm}-${dd}`;
+    }
+
+    // ==================== Date/Time Picker ====================
+    function parseBusinessHours(hoursStr) {
+      const match = (hoursStr || '').match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+      if (!match) return { startH: 11, startM: 0, endH: 22, endM: 0 };
+      return {
+        startH: parseInt(match[1], 10),
+        startM: parseInt(match[2], 10),
+        endH: parseInt(match[3], 10),
+        endM: parseInt(match[4], 10),
+      };
+    }
+
+    function buildTimeSlots(hoursStr) {
+      const { startH, startM, endH, endM } = parseBusinessHours(hoursStr);
+      const slots = [];
+      let h = startH, m = startM;
+      const endTotal = endH * 60 + endM - 30;
+      while (h * 60 + m <= endTotal) {
+        slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+        m += 30;
+        if (m >= 60) { m -= 60; h++; }
+      }
+      return slots;
+    }
+
+    function renderCalendar() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      const year = calendarYear;
+      const month = calendarMonth;
+      const monthNames = ['January','February','March','April','May','June',
+                          'July','August','September','October','November','December'];
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      let html = `
+        <div class="cal-nav">
+          <button class="cal-nav-btn" id="cal-prev" type="button">&#8249;</button>
+          <span class="cal-title">${monthNames[month]} ${year}</span>
+          <button class="cal-nav-btn" id="cal-next" type="button">&#8250;</button>
+        </div>
+        <div class="cal-grid">
+          <div class="cal-day-header sun">Sun</div>
+          <div class="cal-day-header">Mon</div>
+          <div class="cal-day-header">Tue</div>
+          <div class="cal-day-header">Wed</div>
+          <div class="cal-day-header">Thu</div>
+          <div class="cal-day-header">Fri</div>
+          <div class="cal-day-header sat">Sat</div>`;
+
+      for (let i = 0; i < firstDay; i++) {
+        html += '<div class="cal-cell empty"></div>';
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(year, month, d);
+        const dow = dateObj.getDay();
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isPast = dateObj < today;
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === selectedDate;
+
+        let cls = 'cal-cell';
+        if (isPast) cls += ' past';
+        if (isToday) cls += ' today';
+        if (isSelected) cls += ' selected';
+        if (dow === 0) cls += ' sun';
+        if (dow === 6) cls += ' sat';
+
+        html += `<div class="${cls}" data-date="${dateStr}">${d}</div>`;
+      }
+
+      html += '</div>';
+      document.getElementById('calendar').innerHTML = html;
+
+      document.getElementById('cal-prev').addEventListener('click', () => {
+        calendarMonth--;
+        if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+        renderCalendar();
+      });
+      document.getElementById('cal-next').addEventListener('click', () => {
+        calendarMonth++;
+        if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+        renderCalendar();
+      });
+      document.getElementById('calendar').querySelectorAll('.cal-cell[data-date]').forEach(cell => {
+        cell.addEventListener('click', () => {
+          selectedDate = cell.dataset.date;
+          document.getElementById('err-date').classList.remove('visible');
+          renderCalendar();
+        });
+      });
+    }
+
+    function renderTimeSlots(hoursStr) {
+      const slots = buildTimeSlots(hoursStr);
+      const container = document.getElementById('time-slots');
+      let html = '<div class="time-slots">';
+      for (const slot of slots) {
+        const cls = 'time-slot-btn' + (slot === selectedTime ? ' selected' : '');
+        html += `<button class="${cls}" type="button" data-time="${slot}">${slot}</button>`;
+      }
+      html += '</div>';
+      container.innerHTML = html;
+      container.querySelectorAll('.time-slot-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedTime = btn.dataset.time;
+          document.getElementById('err-time').classList.remove('visible');
+          renderTimeSlots(hoursStr);
+        });
+      });
     }
 
     // ==================== Mock API ====================
@@ -611,7 +846,11 @@
         renderCaseHeader(data);
 
         setLoadingText('Rendering form: date/time inputs...');
-        document.getElementById('input-date').min = todayString();
+        const now = new Date();
+        calendarYear = now.getFullYear();
+        calendarMonth = now.getMonth();
+        renderCalendar();
+        renderTimeSlots(data.business_hours);
 
         setLoadingText('Rendering form: participants...');
         participantCount = data.min_participants;
@@ -698,8 +937,8 @@
     function validate() {
       let valid = true;
 
-      const dateVal = document.getElementById('input-date').value;
-      const timeVal = document.getElementById('input-time').value;
+      const dateVal = selectedDate;
+      const timeVal = selectedTime;
       const check1 = document.getElementById('check1').checked;
       const check2 = document.getElementById('check2').checked;
 
@@ -734,8 +973,8 @@
         case_id: caseData.case_id,
         user_id: profile.userId,
         display_name: profile.displayName,
-        requested_date: document.getElementById('input-date').value,
-        requested_time: document.getElementById('input-time').value,
+        requested_date: selectedDate,
+        requested_time: selectedTime,
         participant_count: participantCount,
         participant_names: participantNames,
       };
@@ -800,9 +1039,6 @@
         }
 
         console.log('Display switch complete. appEl:', appEl);
-        document.body.insertAdjacentHTML('beforeend',
-          '<div style="position:fixed;top:0;left:0;background:red;color:white;padding:8px;z-index:9999;font-size:12px;">DEBUG: Switch done. App: ' +
-          (appEl ? 'exists' : 'NULL') + '</div>');
 
       } catch (err) {
         showError('Failed to initialize: ' + err.message, err);
