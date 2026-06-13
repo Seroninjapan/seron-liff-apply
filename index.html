@@ -993,6 +993,24 @@
     }
 
     // ==================== Submit ====================
+    function showFormError(message) {
+      const existing = document.getElementById('error-banner');
+      if (existing) existing.remove();
+
+      const banner = document.createElement('div');
+      banner.id = 'error-banner';
+      banner.style.cssText = [
+        'position:fixed', 'top:0', 'left:0', 'right:0',
+        'background:#E53E3E', 'color:#fff',
+        'padding:16px', 'text-align:center',
+        'z-index:9999', 'font-size:14px', 'font-weight:600',
+        'line-height:1.4',
+      ].join(';');
+      banner.textContent = '⚠️ ' + message;
+      document.body.appendChild(banner);
+      setTimeout(() => banner.remove(), 5000);
+    }
+
     async function handleSubmit() {
       document.getElementById('form-error').classList.remove('visible');
 
@@ -1017,22 +1035,27 @@
       submitBtn.textContent = 'Submitting...';
 
       try {
-        await fetch(GAS_URL, {
+        const response = await fetch(GAS_URL, {
           method: 'POST',
-          mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(formData),
         });
 
-        // no-cors mode: response body is opaque, assume success
-        showSuccess('Application submitted!');
-        setTimeout(() => { try { liff.closeWindow(); } catch (_) {} }, 2000);
+        const result = await response.json();
+
+        if (result.success) {
+          showSuccess(result.message || 'Application submitted successfully!');
+          setTimeout(() => { try { liff.closeWindow(); } catch (_) {} }, 2000);
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Apply Now';
+          showFormError(result.error || 'Submission failed');
+        }
 
       } catch (err) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Apply Now';
-        document.getElementById('form-error').textContent = 'Failed to submit: ' + err.message;
-        document.getElementById('form-error').classList.add('visible');
+        showFormError('Network error: ' + err.message);
       }
     }
 
