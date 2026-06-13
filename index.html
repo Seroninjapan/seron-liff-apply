@@ -90,6 +90,25 @@
       line-height: 1.6;
     }
 
+    .error-stack {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: #FFF5F5;
+      border: 1px solid #FC8181;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      color: #742A2A;
+      text-align: left;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-width: 100%;
+      display: none;
+    }
+
+    .error-stack.visible {
+      display: block;
+    }
+
     /* ==================== App / Form ==================== */
     #app {
       padding-bottom: 32px;
@@ -411,6 +430,7 @@
     <div class="error-icon">⚠️</div>
     <p class="error-title">Something went wrong</p>
     <p class="error-message" id="error-message"></p>
+    <pre class="error-stack" id="error-stack"></pre>
   </div>
 
   <!-- Main app -->
@@ -503,11 +523,31 @@
     let participantCount = 1;
 
     // ==================== Utilities ====================
-    function showError(message) {
+    function setLoadingText(text) {
+      const el = document.querySelector('#loading .loading-text');
+      if (el) el.textContent = text;
+    }
+
+    function withTimeout(promise, label, ms = 60000) {
+      const timer = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms)
+      );
+      return Promise.race([promise, timer]);
+    }
+
+    function showError(message, err) {
       document.getElementById('loading').hidden = true;
       document.getElementById('app').hidden = true;
       document.getElementById('error').hidden = false;
       document.getElementById('error-message').textContent = message;
+
+      const stackEl = document.getElementById('error-stack');
+      if (err && err.stack) {
+        stackEl.textContent = err.stack;
+        stackEl.classList.add('visible');
+      } else {
+        stackEl.classList.remove('visible');
+      }
     }
 
     function showSuccess() {
@@ -700,32 +740,39 @@
     // ==================== Init ====================
     window.addEventListener('load', async () => {
       try {
-        await liff.init({ liffId: '2010386721-BjcO43xK' });
+        setLoadingText('Initializing LIFF...');
+        await withTimeout(liff.init({ liffId: '2010386721-BjcO43xK' }), 'liff.init');
 
         if (!liff.isLoggedIn()) {
+          setLoadingText('Logging in...');
           liff.login();
           return;
         }
 
-        profile = await liff.getProfile();
+        setLoadingText('Getting profile...');
+        profile = await withTimeout(liff.getProfile(), 'liff.getProfile');
 
+        setLoadingText('Fetching case data...');
         const urlParams = new URLSearchParams(window.location.search);
         const caseId = urlParams.get('case_id');
 
         if (!caseId) {
-          showError('Case ID is missing. Please access via the LINE message.');
+          showError(
+            'Case ID is missing. Please access via the LINE message.\n\nURL: ' + window.location.href
+          );
           return;
         }
 
         caseData = await fetchCaseData(caseId);
 
+        setLoadingText('Rendering form...');
         renderForm(caseData, profile);
 
         document.getElementById('loading').hidden = true;
         document.getElementById('app').hidden = false;
 
       } catch (err) {
-        showError('Failed to initialize: ' + err.message);
+        showError('Failed to initialize: ' + err.message, err);
       }
     });
   </script>
