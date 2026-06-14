@@ -227,7 +227,7 @@ function handleCheckin(payload) {
     const inputCode = String(payload.code   || '').trim();
 
     if (!appId || !inputCode) {
-      return { success: false, error: 'パラメータが不足しています' };
+      return { ok: false, error: 'param' };
     }
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -245,27 +245,24 @@ function handleCheckin(payload) {
         break;
       }
     }
-    if (!appRow) return { success: false, error: '予約が見つかりません' };
+    if (!appRow) return { ok: false, error: 'not_found' };
 
     // 2. status=approved か
     if (String(appRow[COL_APP_STATUS]).trim() !== 'approved') {
-      return { success: false, error: 'この予約はチェックイン対象外です' };
+      return { ok: false, error: 'not_found' };
     }
 
     // 3. チェックイン済み確認
     if (appRow[COL_APP_CHECKIN_AT]) {
-      return { success: false, error: 'すでにチェックイン済みです' };
+      return { ok: false, error: 'already' };
     }
 
     // 4. 受付時間範囲確認（開始10分前〜開始60分後）
     const startDt = parseStartDatetime(appRow[COL_APP_DATE], appRow[COL_APP_TIME]);
     if (startDt) {
       const diffMin = (startDt - new Date()) / 60000;
-      if (diffMin > 10) {
-        return { success: false, error: 'チェックイン受付はまだ始まっていません（開始10分前から）' };
-      }
-      if (diffMin < -60) {
-        return { success: false, error: 'チェックイン受付時間を過ぎています' };
+      if (diffMin > 10 || diffMin < -60) {
+        return { ok: false, error: 'time' };
       }
     }
 
@@ -281,10 +278,10 @@ function handleCheckin(payload) {
     }
 
     if (!storedCode) {
-      return { success: false, error: 'チェックインコードが設定されていません（管理者へ連絡）' };
+      return { ok: false, error: 'no_code' };
     }
     if (inputCode !== storedCode) {
-      return { success: false, error: 'コードが違います' };
+      return { ok: false, error: 'code' };
     }
 
     // 6. チェックイン記録
@@ -295,11 +292,11 @@ function handleCheckin(payload) {
     const displayName = String(appRow[COL_APP_DISPLAY_NAME]).trim();
     notifyVenueCheckin(caseId, displayName, appRow[COL_APP_DATE], appRow[COL_APP_TIME]);
 
-    return { success: true, message: 'チェックイン完了！' };
+    return { ok: true };
 
   } catch (e) {
     console.error('[handleCheckin]', e);
-    return { success: false, error: e.message };
+    return { ok: false, error: 'server' };
   }
 }
 

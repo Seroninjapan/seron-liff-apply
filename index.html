@@ -913,6 +913,15 @@
         .addEventListener('click', () => handleCheckinSubmit(appData.app_id));
     }
 
+    const CHECKIN_ERROR_MESSAGES = {
+      already:   'すでにチェックイン済みです',
+      time:      'まだチェックインの時間ではありません',
+      code:      'コードが違います',
+      not_found: 'この予約は見つかりません',
+      no_code:   'コードが設定されていません（管理者へご連絡ください）',
+      server:    'サーバーエラーが発生しました。もう一度お試しください',
+    };
+
     async function handleCheckinSubmit(appId) {
       const codeInput = document.getElementById('checkin-code');
       const errEl     = document.getElementById('err-checkin-code');
@@ -937,7 +946,7 @@
         });
         const result = await res.json();
 
-        if (result.success) {
+        if (result.ok) {
           document.getElementById('app').innerHTML = `
             <div style="text-align:center;padding:60px 20px;">
               <div style="font-size:60px;margin-bottom:20px;">✅</div>
@@ -947,12 +956,14 @@
         } else {
           btn.disabled = false;
           btn.textContent = 'チェックイン';
-          showFormError(result.error || 'チェックインに失敗しました');
+          const msg = CHECKIN_ERROR_MESSAGES[result.error]
+            || 'チェックインに失敗しました（' + (result.error || '不明なエラー') + '）';
+          showFormError(msg);
         }
       } catch (err) {
         btn.disabled = false;
         btn.textContent = 'チェックイン';
-        showFormError('Network error: ' + err.message);
+        showFormError('通信エラー: ' + err.message);
       }
     }
 
