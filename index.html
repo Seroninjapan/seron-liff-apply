@@ -435,6 +435,7 @@
     }
 
     .cal-nav-btn:active { background: var(--border); }
+    .cal-nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 
     .cal-title {
       font-size: 15px;
@@ -737,7 +738,18 @@
     function renderCalendar() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      const minDate = new Date(today);
+      minDate.setDate(today.getDate() + 2);   // 明後日から
+
+      const maxDate = new Date(today);
+      maxDate.setDate(today.getDate() + 30);  // 30日後まで
+
+      // 範囲外になった selectedDate をリセット
+      if (selectedDate) {
+        const sel = new Date(selectedDate);
+        if (sel < minDate || sel > maxDate) selectedDate = '';
+      }
 
       const year = calendarYear;
       const month = calendarMonth;
@@ -746,11 +758,16 @@
       const firstDay = new Date(year, month, 1).getDay();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+      const isAtMinMonth = year === today.getFullYear() && month === today.getMonth();
+      const isAtMaxMonth = year === maxDate.getFullYear() && month === maxDate.getMonth();
+
       let html = `
         <div class="cal-nav">
-          <button class="cal-nav-btn" id="cal-prev" type="button">&#8249;</button>
+          <button class="cal-nav-btn" id="cal-prev" type="button"
+            ${isAtMinMonth ? 'disabled' : ''}>&#8249;</button>
           <span class="cal-title">${monthNames[month]} ${year}</span>
-          <button class="cal-nav-btn" id="cal-next" type="button">&#8250;</button>
+          <button class="cal-nav-btn" id="cal-next" type="button"
+            ${isAtMaxMonth ? 'disabled' : ''}>&#8250;</button>
         </div>
         <div class="cal-grid">
           <div class="cal-day-header sun">Sun</div>
@@ -769,31 +786,34 @@
         const dateObj = new Date(year, month, d);
         const dow = dateObj.getDay();
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const isPast = dateObj < today;
-        const isClosed = closedDays.includes(dow);
-        const isToday = dateStr === todayStr;
-        const isSelected = dateStr === selectedDate;
+
+        const isOutOfRange = dateObj < minDate || dateObj > maxDate;
+        const isClosed = !isOutOfRange && closedDays.includes(dow);
+        const isDisabled = isOutOfRange || isClosed;
+        const isSelected = !isDisabled && dateStr === selectedDate;
 
         let cls = 'cal-cell';
-        if (isPast) cls += ' past';
+        if (isOutOfRange) cls += ' past';
         else if (isClosed) cls += ' closed';
-        if (isToday && !isClosed) cls += ' today';
         if (isSelected) cls += ' selected';
-        if (dow === 0) cls += ' sun';
-        if (dow === 6) cls += ' sat';
+        if (!isDisabled && dow === 0) cls += ' sun';
+        if (!isDisabled && dow === 6) cls += ' sat';
 
-        html += `<div class="${cls}" data-date="${dateStr}">${d}</div>`;
+        // data-date は選択可能セルのみ付与（クリック対象を限定）
+        html += `<div class="${cls}"${!isDisabled ? ` data-date="${dateStr}"` : ''}>${d}</div>`;
       }
 
       html += '</div>';
       document.getElementById('calendar').innerHTML = html;
 
       document.getElementById('cal-prev').addEventListener('click', () => {
+        if (isAtMinMonth) return;
         calendarMonth--;
         if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
         renderCalendar();
       });
       document.getElementById('cal-next').addEventListener('click', () => {
+        if (isAtMaxMonth) return;
         calendarMonth++;
         if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
         renderCalendar();
