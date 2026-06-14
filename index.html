@@ -846,6 +846,116 @@
       });
     }
 
+    // ==================== Check-in ====================
+    async function fetchAppData(appId) {
+      const url = GAS_URL + '?action=get_app&app_id=' + encodeURIComponent(appId);
+      const res = await fetch(url, { method: 'GET' });
+      if (!res.ok) throw new Error('Failed to fetch booking (HTTP ' + res.status + ')');
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || '予約の取得に失敗しました');
+      return data.app;
+    }
+
+    function renderCheckinScreen(appData) {
+      const appEl = document.getElementById('app');
+
+      // すでにチェックイン済みの場合
+      if (appData.checkin_at) {
+        appEl.innerHTML = `
+          <div style="text-align:center;padding:60px 20px;">
+            <div style="font-size:60px;margin-bottom:20px;">✅</div>
+            <h2 style="color:#2D3748;font-size:20px;margin-bottom:8px;">チェックイン済みです</h2>
+            <p style="color:#718096;font-size:14px;">${appData.requested_date} ${appData.requested_time}</p>
+          </div>`;
+        return;
+      }
+
+      appEl.innerHTML = `
+        <div style="padding-bottom:32px;">
+          <div class="case-header">
+            <h1 class="case-title">チェックイン</h1>
+            <div class="case-meta">
+              <div class="case-meta-row">
+                <span class="case-meta-icon">🏪</span>
+                <span>${appData.case_title}${appData.case_area ? '（' + appData.case_area + '）' : ''}</span>
+              </div>
+              <div class="case-meta-row">
+                <span class="case-meta-icon">📅</span>
+                <span>${appData.requested_date} ${appData.requested_time}</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-body">
+            <div class="form-section">
+              <div class="section-header">
+                <p class="section-title">Check-in Code</p>
+              </div>
+              <div class="section-body">
+                <p style="font-size:14px;color:#4A5568;line-height:1.6;">
+                  スタッフから受け取った4桁のコードを入力してください。
+                </p>
+                <div class="field">
+                  <input type="tel" id="checkin-code" class="field-input"
+                    maxlength="4" inputmode="numeric" pattern="[0-9]{4}"
+                    placeholder="0000"
+                    style="text-align:center;font-size:28px;letter-spacing:10px;font-weight:700;">
+                  <span class="field-error visible" id="err-checkin-code" style="display:none;"></span>
+                </div>
+              </div>
+            </div>
+            <div class="submit-wrap">
+              <button class="btn-submit" id="checkin-submit-btn" type="button">チェックイン</button>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('checkin-submit-btn')
+        .addEventListener('click', () => handleCheckinSubmit(appData.app_id));
+    }
+
+    async function handleCheckinSubmit(appId) {
+      const codeInput = document.getElementById('checkin-code');
+      const errEl     = document.getElementById('err-checkin-code');
+      const code = codeInput.value.trim();
+
+      if (!code || !/^\d{4}$/.test(code)) {
+        errEl.textContent = '4桁の数字を入力してください。';
+        errEl.style.display = 'block';
+        return;
+      }
+      errEl.style.display = 'none';
+
+      const btn = document.getElementById('checkin-submit-btn');
+      btn.disabled = true;
+      btn.textContent = '送信中...';
+
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'checkin', app_id: appId, code }),
+        });
+        const result = await res.json();
+
+        if (result.success) {
+          document.getElementById('app').innerHTML = `
+            <div style="text-align:center;padding:60px 20px;">
+              <div style="font-size:60px;margin-bottom:20px;">✅</div>
+              <h2 style="color:#2D3748;font-size:20px;margin-bottom:8px;">チェックイン完了！</h2>
+              <p style="color:#718096;font-size:14px;">ご来店ありがとうございます</p>
+            </div>`;
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'チェックイン';
+          showFormError(result.error || 'チェックインに失敗しました');
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'チェックイン';
+        showFormError('Network error: ' + err.message);
+      }
+    }
+
     // ==================== API ====================
     async function fetchCaseData(caseId) {
       const url = GAS_URL + '?action=get_case&case_id=' + encodeURIComponent(caseId);
@@ -1085,21 +1195,29 @@
         setLoadingText('Getting profile...');
         profile = await withTimeout(liff.getProfile(), 'liff.getProfile');
 
-        setLoadingText('Fetching case data...');
         const urlParams = new URLSearchParams(window.location.search);
+        const appId  = urlParams.get('app_id');
         const caseId = urlParams.get('case_id');
 
-        if (!caseId) {
+        if (appId) {
+          // ── チェックインフロー ──
+          setLoadingText('Loading booking...');
+          const appData = await fetchAppData(appId);
+          renderCheckinScreen(appData);
+
+        } else if (caseId) {
+          // ── 予約申込フロー ──
+          setLoadingText('Fetching case data...');
+          caseData = await fetchCaseData(caseId);
+          setLoadingText('Rendering form...');
+          renderForm(caseData, profile);
+
+        } else {
           showError(
-            'Case ID is missing. Please access via the LINE message.\n\nURL: ' + window.location.href
+            'URLが正しくありません。LINEメッセージ経由でアクセスしてください。\n\nURL: ' + window.location.href
           );
           return;
         }
-
-        caseData = await fetchCaseData(caseId);
-
-        setLoadingText('Rendering form...');
-        renderForm(caseData, profile);
 
         // 100ms delay to let DOM settle before switching display
         await new Promise(r => setTimeout(r, 100));
