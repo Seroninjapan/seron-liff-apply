@@ -124,15 +124,6 @@
       padding: 20px 16px 24px;
     }
 
-    .case-image {
-      width: 100%;
-      border-radius: var(--radius-sm);
-      margin-bottom: 12px;
-      object-fit: cover;
-      max-height: 180px;
-      display: block;
-    }
-
     .case-title {
       font-size: 20px;
       font-weight: 700;
@@ -852,12 +843,12 @@
     // ==================== Render ====================
     function renderCaseHeader(data) {
       const header = document.getElementById('case-header');
-      const imgHtml = data.image_url
-        ? `<img class="case-image" src="${data.image_url}" alt="${data.title}">`
+      const heroHtml = data.image_1_url
+        ? `<div style="width:100%;aspect-ratio:16/10;background-image:url('${data.image_1_url}');background-size:cover;background-position:center;background-color:#E2E8F0;"></div>`
         : '';
       header.innerHTML = `
+        ${heroHtml}
         <div class="case-header">
-          ${imgHtml}
           <h1 class="case-title">${data.title}</h1>
           <div class="case-meta">
             <div class="case-meta-row">
