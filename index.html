@@ -852,20 +852,20 @@
       const res = await fetch(url, { method: 'GET' });
       if (!res.ok) throw new Error('Failed to fetch booking (HTTP ' + res.status + ')');
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || '予約の取得に失敗しました');
-      return data.app;
+      if (!data.ok) throw new Error(data.error || '予約の取得に失敗しました');
+      return data; // トップレベルに store_name / datetime / status が入っている
     }
 
     function renderCheckinScreen(appData) {
       const appEl = document.getElementById('app');
 
-      // すでにチェックイン済みの場合
-      if (appData.checkin_at) {
+      // チェックイン済みの場合
+      if (appData.status === 'checked_in') {
         appEl.innerHTML = `
           <div style="text-align:center;padding:60px 20px;">
             <div style="font-size:60px;margin-bottom:20px;">✅</div>
             <h2 style="color:#2D3748;font-size:20px;margin-bottom:8px;">チェックイン済みです</h2>
-            <p style="color:#718096;font-size:14px;">${appData.requested_date} ${appData.requested_time}</p>
+            <p style="color:#718096;font-size:14px;">${appData.datetime || ''}</p>
           </div>`;
         return;
       }
@@ -877,11 +877,11 @@
             <div class="case-meta">
               <div class="case-meta-row">
                 <span class="case-meta-icon">🏪</span>
-                <span>${appData.case_title}${appData.case_area ? '（' + appData.case_area + '）' : ''}</span>
+                <span>${appData.store_name || ''}</span>
               </div>
               <div class="case-meta-row">
                 <span class="case-meta-icon">📅</span>
-                <span>${appData.requested_date} ${appData.requested_time}</span>
+                <span>${appData.datetime || ''}</span>
               </div>
             </div>
           </div>
