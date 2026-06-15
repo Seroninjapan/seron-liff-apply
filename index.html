@@ -852,7 +852,7 @@
       const res = await fetch(url, { method: 'GET' });
       if (!res.ok) throw new Error('Failed to fetch booking (HTTP ' + res.status + ')');
       const data = await res.json();
-      if (!data.ok) throw new Error(data.error || '予約の取得に失敗しました');
+      if (!data.ok) throw new Error(data.error || 'Failed to load booking');
       return data; // トップレベルに store_name / datetime / status が入っている
     }
 
@@ -864,7 +864,7 @@
         appEl.innerHTML = `
           <div style="text-align:center;padding:60px 20px;">
             <div style="font-size:60px;margin-bottom:20px;">✅</div>
-            <h2 style="color:#2D3748;font-size:20px;margin-bottom:8px;">チェックイン済みです</h2>
+            <h2 style="color:#2D3748;font-size:20px;margin-bottom:8px;">Already checked in</h2>
             <p style="color:#718096;font-size:14px;">${appData.datetime || ''}</p>
           </div>`;
         return;
@@ -873,7 +873,7 @@
       appEl.innerHTML = `
         <div style="padding-bottom:32px;">
           <div class="case-header">
-            <h1 class="case-title">チェックイン</h1>
+            <h1 class="case-title">Check In</h1>
             <div class="case-meta">
               <div class="case-meta-row">
                 <span class="case-meta-icon">🏪</span>
@@ -892,7 +892,7 @@
               </div>
               <div class="section-body">
                 <p style="font-size:14px;color:#4A5568;line-height:1.6;">
-                  スタッフから受け取った4桁のコードを入力してください。
+                  Enter the 4-digit code you received from a staff member.
                 </p>
                 <div class="field">
                   <input type="tel" id="checkin-code" class="field-input"
@@ -904,7 +904,7 @@
               </div>
             </div>
             <div class="submit-wrap">
-              <button class="btn-submit" id="checkin-submit-btn" type="button">チェックイン</button>
+              <button class="btn-submit" id="checkin-submit-btn" type="button">Check In</button>
             </div>
           </div>
         </div>`;
@@ -914,12 +914,12 @@
     }
 
     const CHECKIN_ERROR_MESSAGES = {
-      already:   'すでにチェックイン済みです',
-      time:      'まだチェックインの時間ではありません',
-      code:      'コードが違います',
-      not_found: 'この予約は見つかりません',
-      no_code:   'コードが設定されていません（管理者へご連絡ください）',
-      server:    'サーバーエラーが発生しました。もう一度お試しください',
+      already:   "You've already checked in.",
+      time:      "It's not time to check in yet.",
+      code:      'Incorrect code. Please try again.',
+      not_found: 'Booking not found.',
+      no_code:   'No check-in code has been set. Please contact your administrator.',
+      server:    'A server error occurred. Please try again.',
     };
 
     async function handleCheckinSubmit(appId) {
@@ -928,7 +928,7 @@
       const code = codeInput.value.trim();
 
       if (!code || !/^\d{4}$/.test(code)) {
-        errEl.textContent = '4桁の数字を入力してください。';
+        errEl.textContent = 'Please enter a 4-digit code.';
         errEl.style.display = 'block';
         return;
       }
@@ -936,7 +936,7 @@
 
       const btn = document.getElementById('checkin-submit-btn');
       btn.disabled = true;
-      btn.textContent = '送信中...';
+      btn.textContent = 'Submitting...';
 
       try {
         const res = await fetch(GAS_URL, {
@@ -950,20 +950,20 @@
           document.getElementById('app').innerHTML = `
             <div style="text-align:center;padding:60px 20px;">
               <div style="font-size:60px;margin-bottom:20px;">✅</div>
-              <h2 style="color:#2D3748;font-size:20px;margin-bottom:8px;">チェックイン完了！</h2>
-              <p style="color:#718096;font-size:14px;">ご来店ありがとうございます</p>
+              <h2 style="color:#2D3748;font-size:20px;margin-bottom:8px;">Check-in complete!</h2>
+              <p style="color:#718096;font-size:14px;">Thank you for visiting!</p>
             </div>`;
         } else {
           btn.disabled = false;
-          btn.textContent = 'チェックイン';
+          btn.textContent = 'Check In';
           const msg = CHECKIN_ERROR_MESSAGES[result.error]
-            || 'チェックインに失敗しました（' + (result.error || '不明なエラー') + '）';
+            || 'Check-in failed: ' + (result.error || 'unknown error');
           showFormError(msg);
         }
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = 'チェックイン';
-        showFormError('通信エラー: ' + err.message);
+        btn.textContent = 'Check In';
+        showFormError('Network error: ' + err.message);
       }
     }
 
@@ -1225,7 +1225,7 @@
 
         } else {
           showError(
-            'URLが正しくありません。LINEメッセージ経由でアクセスしてください。\n\nURL: ' + window.location.href
+            'Invalid URL. Please access this page via LINE message.\n\nURL: ' + window.location.href
           );
           return;
         }
