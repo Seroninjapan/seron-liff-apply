@@ -856,7 +856,7 @@
       return data; // トップレベルに store_name / datetime / status が入っている
     }
 
-    function renderCheckinScreen(appData) {
+    function renderCheckinScreen(appData, appId) {
       const appEl = document.getElementById('app');
 
       // チェックイン済みの場合
@@ -910,7 +910,7 @@
         </div>`;
 
       document.getElementById('checkin-submit-btn')
-        .addEventListener('click', () => handleCheckinSubmit(appData.app_id));
+        .addEventListener('click', () => handleCheckinSubmit(appId));
     }
 
     const CHECKIN_ERROR_MESSAGES = {
@@ -1214,7 +1214,7 @@
           // ── チェックインフロー ──
           setLoadingText('Loading booking...');
           const appData = await fetchAppData(appId);
-          renderCheckinScreen(appData);
+          renderCheckinScreen(appData, appId);
 
         } else if (caseId) {
           // ── 予約申込フロー ──
