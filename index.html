@@ -607,13 +607,17 @@
         <div class="section-body">
           <label class="checkbox-field" id="label-check1">
             <input type="checkbox" id="check1">
-            <span class="checkbox-text">I will arrive at the venue on time. If I cannot make it or will be late, I will contact Seron at least 30 minutes in advance.</span>
+            <span class="checkbox-text">I will arrive at the venue on time. If I will be late, I will contact Seron at least 30 minutes in advance. If I cannot attend, I will contact Seron at least 1 day in advance.</span>
           </label>
           <label class="checkbox-field" id="label-check2">
             <input type="checkbox" id="check2">
+            <span class="checkbox-text">I understand that each participant must submit a survey after the visit (e.g. 2 participants = 2 surveys). I will share the survey URL with all participants.</span>
+          </label>
+          <label class="checkbox-field" id="label-check3">
+            <input type="checkbox" id="check3">
             <span class="checkbox-text">I understand that 3 late arrivals or 1 no-show without prior notice will result in permanent account suspension.</span>
           </label>
-          <span class="field-error" id="err-checks">Please agree to both conditions.</span>
+          <span class="field-error" id="err-checks">Please agree to all conditions.</span>
         </div>
       </div>
 
@@ -1041,7 +1045,7 @@
         });
 
         setLoadingText('Rendering form: checkboxes...');
-        ['check1', 'check2'].forEach((id, i) => {
+        ['check1', 'check2', 'check3'].forEach((id, i) => {
           document.getElementById(id).addEventListener('change', function() {
             document.getElementById(`label-check${i + 1}`).classList.toggle('checked', this.checked);
           });
@@ -1103,6 +1107,7 @@
       const timeVal = selectedTime;
       const check1 = document.getElementById('check1').checked;
       const check2 = document.getElementById('check2').checked;
+      const check3 = document.getElementById('check3').checked;
 
       const setError = (id, show) => {
         document.getElementById(id).classList.toggle('visible', show);
@@ -1116,7 +1121,7 @@
       const allNamesFilled = Array.from(inputs).every(el => el.value.trim() !== '');
       setError('err-names', !allNamesFilled);
 
-      setError('err-checks', !(check1 && check2));
+      setError('err-checks', !(check1 && check2 && check3));
 
       return valid;
     }
