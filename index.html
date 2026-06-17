@@ -1022,13 +1022,13 @@
         updateStepperUI(data.min_participants, data.max_participants);
 
         setLoadingText('Rendering form: name inputs...');
-        updateParticipantNames(participantCount, userProfile.displayName);
+        updateParticipantNames(participantCount);
 
         document.getElementById('stepper-minus').addEventListener('click', () => {
           if (participantCount > data.min_participants) {
             participantCount--;
             updateStepperUI(data.min_participants, data.max_participants);
-            updateParticipantNames(participantCount, userProfile.displayName);
+            updateParticipantNames(participantCount);
           }
         });
 
@@ -1036,7 +1036,7 @@
           if (participantCount < data.max_participants) {
             participantCount++;
             updateStepperUI(data.min_participants, data.max_participants);
-            updateParticipantNames(participantCount, userProfile.displayName);
+            updateParticipantNames(participantCount);
           }
         });
 
@@ -1063,7 +1063,7 @@
       document.getElementById('stepper-plus').disabled = participantCount >= max;
     }
 
-    function updateParticipantNames(count, defaultName) {
+    function updateParticipantNames(count) {
       const container = document.getElementById('participant-names');
       const existing = container.querySelectorAll('.field-input');
       const existingValues = Array.from(existing).map(el => el.value);
@@ -1082,14 +1082,11 @@
         input.type = 'text';
         input.className = 'field-input';
         input.id = `name-${i}`;
-        input.placeholder = i === 0 ? 'Your name' : `Name`;
+        input.placeholder = 'Name';
         input.autocomplete = 'off';
 
-        // Preserve existing values; default first slot to LINE display name
         if (i < existingValues.length && existingValues[i]) {
           input.value = existingValues[i];
-        } else if (i === 0 && defaultName) {
-          input.value = defaultName;
         }
 
         wrap.appendChild(label);
