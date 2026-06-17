@@ -644,6 +644,7 @@
     // ==================== State ====================
     let caseData = null;
     let profile = null;
+    let appMode = 'new';
     let participantCount = 1;
     let selectedDate = '';
     let selectedTime = '';
@@ -1008,10 +1009,17 @@
         </div>`;
     }
 
-    function renderForm(data, userProfile) {
+    function renderForm(data, userProfile, mode) {
       try {
         setLoadingText('Rendering form: header...');
         renderCaseHeader(data);
+
+        if (mode === 'reapply') {
+          const banner = document.createElement('p');
+          banner.style.cssText = 'margin:12px 16px 0;padding:10px 14px;background:#EBF8FF;border:1.5px solid #90CDF4;border-radius:8px;font-size:13px;color:#2C5282;line-height:1.5;';
+          banner.textContent = 'Please pick a new date and time for your application.';
+          document.getElementById('case-header').insertAdjacentElement('afterend', banner);
+        }
 
         setLoadingText('Rendering form: date/time inputs...');
         closedDays = parseClosedDays(data.closed_days);
@@ -1155,6 +1163,7 @@
 
       const formData = {
         action: 'apply',
+        mode: appMode,
         case_id: caseData.case_id,
         user_id: profile.userId,
         display_name: profile.displayName,
@@ -1211,6 +1220,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const appId  = urlParams.get('app_id');
         const caseId = urlParams.get('case_id');
+        appMode = urlParams.get('mode') === 'reapply' ? 'reapply' : 'new';
 
         if (appId) {
           // ── チェックインフロー ──
@@ -1223,7 +1233,7 @@
           setLoadingText('Fetching case data...');
           caseData = await fetchCaseData(caseId);
           setLoadingText('Rendering form...');
-          renderForm(caseData, profile);
+          renderForm(caseData, profile, appMode);
 
         } else {
           showError(
