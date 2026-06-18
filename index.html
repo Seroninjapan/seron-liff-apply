@@ -533,6 +533,185 @@
       color: #fff;
       font-weight: 700;
     }
+
+    /* ==================== Reschedule ==================== */
+    .info-banner {
+      margin: 20px 0 0;
+      padding: 12px 14px;
+      background: #EBF8FF;
+      border: 1.5px solid #90CDF4;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: #2C5282;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+
+    .readonly-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .readonly-label {
+      font-size: 12px;
+      color: #718096;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .readonly-value {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .alt-date-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .alt-date-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      background: #fff;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .alt-date-card.selected {
+      border-color: var(--primary);
+      background: #F0F7F5;
+    }
+
+    .alt-date-radio {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .alt-date-card.selected .alt-date-radio {
+      border-color: var(--primary);
+      background: var(--primary);
+    }
+
+    .alt-date-card.selected .alt-date-radio::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .alt-date-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .alt-date-num {
+      font-size: 11px;
+      color: #718096;
+    }
+
+    .alt-date-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .btn-none-works {
+      width: 100%;
+      height: 44px;
+      background: transparent;
+      color: #C53030;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1.5px solid #FC8181;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      margin-top: 12px;
+    }
+
+    .btn-none-works:active { background: #FFF5F5; }
+    .btn-none-works:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Confirm dialog */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .confirm-dialog {
+      background: #fff;
+      border-radius: var(--radius-md);
+      padding: 24px 20px 20px;
+      max-width: 320px;
+      width: 100%;
+    }
+
+    .confirm-dialog-msg {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.65;
+      margin-bottom: 20px;
+      white-space: pre-line;
+    }
+
+    .confirm-dialog-btns {
+      display: flex;
+      gap: 10px;
+    }
+
+    .confirm-dialog-cancel {
+      flex: 1;
+      height: 44px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      color: #718096;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .confirm-dialog-ok {
+      flex: 1;
+      height: 44px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: #E53E3E;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
   </style>
 </head>
 <body>
@@ -665,6 +844,21 @@
       return Promise.race([promise, timer]);
     }
 
+    // Handles both direct (?foo=bar) and LIFF-encoded (?liff.state=%3Ffoo%3Dbar) params
+    function getParam(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const direct = urlParams.get(name);
+      if (direct) return direct;
+      const liffState = urlParams.get('liff.state');
+      if (liffState) {
+        const stateParams = new URLSearchParams(
+          liffState.startsWith('?') ? liffState.substring(1) : liffState
+        );
+        return stateParams.get(name);
+      }
+      return null;
+    }
+
     function showError(message, err) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('app').style.display = 'none';
@@ -684,10 +878,13 @@
 
     function showSuccess(message) {
       message = message || 'Application submitted!';
+      const safeHtml = message
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>');
       document.getElementById('app').innerHTML = `
         <div style="text-align:center;padding:60px 20px;">
           <div style="font-size:60px;margin-bottom:20px;">✅</div>
-          <h2 style="color:#2D3748;font-size:20px;margin-bottom:8px;">${message}</h2>
+          <h2 style="color:#2D3748;font-size:20px;margin-bottom:8px;line-height:1.5;">${safeHtml}</h2>
           <p style="color:#718096;font-size:14px;">Closing window...</p>
         </div>`;
     }
@@ -972,6 +1169,229 @@
       }
     }
 
+    // ==================== Confirm Dialog ====================
+    function showConfirmDialog(message, onConfirm) {
+      const overlay = document.createElement('div');
+      overlay.className = 'confirm-overlay';
+      overlay.innerHTML = `
+        <div class="confirm-dialog">
+          <p class="confirm-dialog-msg">${message}</p>
+          <div class="confirm-dialog-btns">
+            <button class="confirm-dialog-cancel" type="button">キャンセル</button>
+            <button class="confirm-dialog-ok" type="button">送信する</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('.confirm-dialog-cancel').addEventListener('click', () => overlay.remove());
+      overlay.querySelector('.confirm-dialog-ok').addEventListener('click', () => {
+        overlay.remove();
+        onConfirm();
+      });
+    }
+
+    // ==================== Reschedule ====================
+    function formatAltDate(isoStr) {
+      if (!isoStr) return isoStr;
+      const [datePart, timePart] = isoStr.split('T');
+      const [year, month, day] = datePart.split('-').map(Number);
+      const dateObj = new Date(year, month - 1, day);
+      const dowLabels = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${month}/${day} (${dowLabels[dateObj.getDay()]}) ${timePart}`;
+    }
+
+    async function loadRescheduleScreen(appId) {
+      const url = GAS_URL + '?action=get_app&app_id=' + encodeURIComponent(appId) + '&mode=reschedule';
+      const res = await fetch(url, { method: 'GET' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'この応募の日程再選択は利用できません。');
+      if (!data.alt_dates || data.alt_dates.length < 3) {
+        throw new Error('代替日時のデータが不正です。運営にお問い合わせください。');
+      }
+      renderRescheduleScreen(data, appId);
+    }
+
+    function renderRescheduleScreen(data, appId) {
+      let selectedAltDate = '';
+
+      const namesHtml = (data.participant_names || [])
+        .map(n => `<div class="readonly-value">• ${n}</div>`)
+        .join('');
+
+      document.getElementById('app').innerHTML = `
+        <div style="padding-bottom:32px;">
+          <div class="case-header">
+            <h1 class="case-title">日程の再選択</h1>
+            <p style="font-size:13px;opacity:0.9;margin-top:4px;">店舗が代替日時を提案しています。</p>
+          </div>
+          <div class="form-body">
+
+            <div class="form-section">
+              <div class="section-header"><p class="section-title">案件情報</p></div>
+              <div class="section-body">
+                <div class="readonly-row">
+                  <span class="readonly-label">案件名</span>
+                  <span class="readonly-value">${data.case_title || ''}</span>
+                </div>
+                <div class="readonly-row">
+                  <span class="readonly-label">元々希望していた日時</span>
+                  <span class="readonly-value">${data.original_datetime || ''}</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="info-banner">店舗から以下の代替日時が提案されています。\nご都合の良い日時をお選びください。</p>
+
+            <div class="form-section">
+              <div class="section-header"><p class="section-title">代替日時を選んでください</p></div>
+              <div class="section-body">
+                <div class="alt-date-cards" id="alt-date-cards">
+                  ${data.alt_dates.map((d, i) => `
+                    <div class="alt-date-card" data-date="${d}" id="alt-card-${i}">
+                      <div class="alt-date-radio"></div>
+                      <div class="alt-date-label">
+                        <span class="alt-date-num">第${i + 1}候補</span>
+                        <span class="alt-date-text">${formatAltDate(d)}</span>
+                      </div>
+                    </div>`).join('')}
+                </div>
+                <span class="field-error" id="rs-err-date" style="display:none;">日時を選んでください。</span>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="section-header"><p class="section-title">参加者情報</p></div>
+              <div class="section-body">
+                <div class="readonly-row">
+                  <span class="readonly-label">人数</span>
+                  <span class="readonly-value">${data.participant_count || ''} 名</span>
+                </div>
+                <div class="readonly-row">
+                  <span class="readonly-label">お名前</span>
+                  ${namesHtml}
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="section-header"><p class="section-title">Confirmation</p></div>
+              <div class="section-body">
+                <label class="checkbox-field" id="rs-label-check1">
+                  <input type="checkbox" id="rs-check1">
+                  <span class="checkbox-text">I will arrive at the venue on time. If I will be late, I will contact Seron at least 30 minutes in advance. If I cannot attend, I will contact Seron at least 1 day in advance.</span>
+                </label>
+                <label class="checkbox-field" id="rs-label-check2">
+                  <input type="checkbox" id="rs-check2">
+                  <span class="checkbox-text">I understand that each participant must submit a survey after the visit (e.g. 2 participants = 2 surveys). I will share the survey URL with all participants.</span>
+                </label>
+                <label class="checkbox-field" id="rs-label-check3">
+                  <input type="checkbox" id="rs-check3">
+                  <span class="checkbox-text">I understand that 3 late arrivals or 1 no-show without prior notice will result in permanent account suspension.</span>
+                </label>
+                <span class="field-error" id="rs-err-checks" style="display:none;">Please agree to all conditions.</span>
+              </div>
+            </div>
+
+            <div class="submit-wrap">
+              <button class="btn-submit" id="rs-submit-btn" type="button" disabled>この日時で応募する</button>
+              <button class="btn-none-works" id="rs-none-btn" type="button">どれも都合がつきません</button>
+            </div>
+          </div>
+        </div>`;
+
+      function updateSubmitBtn() {
+        const allChecked = ['rs-check1', 'rs-check2', 'rs-check3']
+          .every(id => document.getElementById(id).checked);
+        document.getElementById('rs-submit-btn').disabled = !(selectedAltDate && allChecked);
+      }
+
+      document.getElementById('alt-date-cards').querySelectorAll('.alt-date-card').forEach(card => {
+        card.addEventListener('click', () => {
+          document.querySelectorAll('.alt-date-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedAltDate = card.dataset.date;
+          document.getElementById('rs-err-date').style.display = 'none';
+          updateSubmitBtn();
+        });
+      });
+
+      ['rs-check1', 'rs-check2', 'rs-check3'].forEach((id, i) => {
+        document.getElementById(id).addEventListener('change', function() {
+          document.getElementById(`rs-label-check${i + 1}`).classList.toggle('checked', this.checked);
+          updateSubmitBtn();
+        });
+      });
+
+      document.getElementById('rs-submit-btn').addEventListener('click', async () => {
+        if (!selectedAltDate) {
+          document.getElementById('rs-err-date').style.display = 'block';
+          return;
+        }
+        const btn = document.getElementById('rs-submit-btn');
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+        try {
+          const res = await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              action: 'user_reschedule_response',
+              app_id: appId,
+              choice: 'alt_date_selected',
+              selected_date: selectedAltDate,
+            }),
+          });
+          const result = await res.json();
+          if (result.ok) {
+            showSuccess('応募内容を更新しました！\n店舗からの確認をお待ちください。');
+            setTimeout(() => { try { liff.closeWindow(); } catch (_) {} }, 3000);
+          } else {
+            btn.disabled = false;
+            btn.textContent = 'この日時で応募する';
+            showFormError(result.error || '送信に失敗しました');
+          }
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = 'この日時で応募する';
+          showFormError('Network error: ' + err.message);
+        }
+      });
+
+      document.getElementById('rs-none-btn').addEventListener('click', () => {
+        showConfirmDialog(
+          '本当に「どれも都合がつかない」を送信しますか？\n今回の案件への応募は終了し、来月以降の案件案内をお待ちください。',
+          () => handleNoneWorks(appId)
+        );
+      });
+    }
+
+    async function handleNoneWorks(appId) {
+      const noneBtn = document.getElementById('rs-none-btn');
+      if (noneBtn) { noneBtn.disabled = true; noneBtn.textContent = '送信中...'; }
+      try {
+        const res = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'user_reschedule_response',
+            app_id: appId,
+            choice: 'none_works',
+          }),
+        });
+        const result = await res.json();
+        if (result.ok) {
+          showSuccess('ご連絡ありがとうございました。\n来月以降の案件案内をお待ちください！');
+          setTimeout(() => { try { liff.closeWindow(); } catch (_) {} }, 3000);
+        } else {
+          if (noneBtn) { noneBtn.disabled = false; noneBtn.textContent = 'どれも都合がつきません'; }
+          showFormError(result.error || '送信に失敗しました');
+        }
+      } catch (err) {
+        if (noneBtn) { noneBtn.disabled = false; noneBtn.textContent = 'どれも都合がつきません'; }
+        showFormError('Network error: ' + err.message);
+      }
+    }
+
     // ==================== API ====================
     async function fetchCaseData(caseId) {
       const url = GAS_URL + '?action=get_case&case_id=' + encodeURIComponent(caseId);
@@ -1217,12 +1637,17 @@
         setLoadingText('Getting profile...');
         profile = await withTimeout(liff.getProfile(), 'liff.getProfile');
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const appId  = urlParams.get('app_id');
-        const caseId = urlParams.get('case_id');
-        appMode = urlParams.get('mode') === 'reapply' ? 'reapply' : 'new';
+        const appId  = getParam('app_id');
+        const caseId = getParam('case_id');
+        const urlMode = getParam('mode');
+        appMode = urlMode === 'reapply' ? 'reapply' : 'new';
 
-        if (appId) {
+        if (appId && urlMode === 'reschedule') {
+          // ── 日程再選択フロー ──
+          setLoadingText('Loading reschedule data...');
+          await loadRescheduleScreen(appId);
+
+        } else if (appId) {
           // ── チェックインフロー ──
           setLoadingText('Loading booking...');
           const appData = await fetchAppData(appId);
