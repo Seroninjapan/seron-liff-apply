@@ -1214,7 +1214,12 @@
     function renderRescheduleScreen(data, appId) {
       let selectedAltDate = '';
 
-      const namesHtml = (data.participant_names || [])
+      const participantNames = Array.isArray(data.participant_names)
+        ? data.participant_names
+        : (data.participant_names != null && String(data.participant_names).trim() !== ''
+            ? String(data.participant_names).split(',').map(s => s.trim()).filter(Boolean)
+            : []);
+      const namesHtml = participantNames
         .map(n => `<div class="readonly-value">• ${n}</div>`)
         .join('');
 
