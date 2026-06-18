@@ -1177,8 +1177,8 @@
         <div class="confirm-dialog">
           <p class="confirm-dialog-msg">${message}</p>
           <div class="confirm-dialog-btns">
-            <button class="confirm-dialog-cancel" type="button">キャンセル</button>
-            <button class="confirm-dialog-ok" type="button">送信する</button>
+            <button class="confirm-dialog-cancel" type="button">Cancel</button>
+            <button class="confirm-dialog-ok" type="button">Send</button>
           </div>
         </div>`;
       document.body.appendChild(overlay);
@@ -1195,7 +1195,7 @@
       const [datePart, timePart] = isoStr.split('T');
       const [year, month, day] = datePart.split('-').map(Number);
       const dateObj = new Date(year, month - 1, day);
-      const dowLabels = ['日', '月', '火', '水', '木', '金', '土'];
+      const dowLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       return `${month}/${day} (${dowLabels[dateObj.getDay()]}) ${timePart}`;
     }
 
@@ -1204,9 +1204,9 @@
       const res = await fetch(url, { method: 'GET' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      if (!data.ok) throw new Error(data.error || 'この応募の日程再選択は利用できません。');
+      if (!data.ok) throw new Error(data.error || 'This reschedule is no longer available.');
       if (!data.alt_dates || data.alt_dates.length < 3) {
-        throw new Error('代替日時のデータが不正です。運営にお問い合わせください。');
+        throw new Error('Invalid alternative date data. Please contact Seron.');
       }
       renderRescheduleScreen(data, appId);
     }
@@ -1226,53 +1226,53 @@
       document.getElementById('app').innerHTML = `
         <div style="padding-bottom:32px;">
           <div class="case-header">
-            <h1 class="case-title">日程の再選択</h1>
-            <p style="font-size:13px;opacity:0.9;margin-top:4px;">店舗が代替日時を提案しています。</p>
+            <h1 class="case-title">Reschedule</h1>
+            <p style="font-size:13px;opacity:0.9;margin-top:4px;">The venue has proposed new dates.</p>
           </div>
           <div class="form-body">
 
             <div class="form-section">
-              <div class="section-header"><p class="section-title">案件情報</p></div>
+              <div class="section-header"><p class="section-title">Details</p></div>
               <div class="section-body">
                 <div class="readonly-row">
-                  <span class="readonly-label">案件名</span>
+                  <span class="readonly-label">Mission</span>
                   <span class="readonly-value">${data.case_title || ''}</span>
                 </div>
                 <div class="readonly-row">
-                  <span class="readonly-label">元々希望していた日時</span>
+                  <span class="readonly-label">Originally requested date &amp; time</span>
                   <span class="readonly-value">${data.original_datetime || ''}</span>
                 </div>
               </div>
             </div>
 
-            <p class="info-banner">店舗から以下の代替日時が提案されています。\nご都合の良い日時をお選びください。</p>
+            <p class="info-banner">The venue has proposed the following alternative dates.\nPlease choose the one that works best for you.</p>
 
             <div class="form-section">
-              <div class="section-header"><p class="section-title">代替日時を選んでください</p></div>
+              <div class="section-header"><p class="section-title">Choose an alternative date</p></div>
               <div class="section-body">
                 <div class="alt-date-cards" id="alt-date-cards">
                   ${data.alt_dates.map((d, i) => `
                     <div class="alt-date-card" data-date="${d}" id="alt-card-${i}">
                       <div class="alt-date-radio"></div>
                       <div class="alt-date-label">
-                        <span class="alt-date-num">第${i + 1}候補</span>
+                        <span class="alt-date-num">Option ${i + 1}</span>
                         <span class="alt-date-text">${formatAltDate(d)}</span>
                       </div>
                     </div>`).join('')}
                 </div>
-                <span class="field-error" id="rs-err-date" style="display:none;">日時を選んでください。</span>
+                <span class="field-error" id="rs-err-date" style="display:none;">Please select a date.</span>
               </div>
             </div>
 
             <div class="form-section">
-              <div class="section-header"><p class="section-title">参加者情報</p></div>
+              <div class="section-header"><p class="section-title">Participants</p></div>
               <div class="section-body">
                 <div class="readonly-row">
-                  <span class="readonly-label">人数</span>
-                  <span class="readonly-value">${data.participant_count || ''} 名</span>
+                  <span class="readonly-label">Number of participants</span>
+                  <span class="readonly-value">${data.participant_count || ''}</span>
                 </div>
                 <div class="readonly-row">
-                  <span class="readonly-label">お名前</span>
+                  <span class="readonly-label">Names</span>
                   ${namesHtml}
                 </div>
               </div>
@@ -1298,8 +1298,8 @@
             </div>
 
             <div class="submit-wrap">
-              <button class="btn-submit" id="rs-submit-btn" type="button" disabled>この日時で応募する</button>
-              <button class="btn-none-works" id="rs-none-btn" type="button">どれも都合がつきません</button>
+              <button class="btn-submit" id="rs-submit-btn" type="button" disabled>Confirm this date</button>
+              <button class="btn-none-works" id="rs-none-btn" type="button">None of these work for me</button>
             </div>
           </div>
         </div>`;
@@ -1348,23 +1348,23 @@
           });
           const result = await res.json();
           if (result.ok) {
-            showSuccess('応募内容を更新しました！\n店舗からの確認をお待ちください。');
+            showSuccess('Your application has been updated!\nPlease wait for the venue to confirm.');
             setTimeout(() => { try { liff.closeWindow(); } catch (_) {} }, 3000);
           } else {
             btn.disabled = false;
-            btn.textContent = 'この日時で応募する';
-            showFormError(result.error || '送信に失敗しました');
+            btn.textContent = 'Confirm this date';
+            showFormError(result.error || 'Submission failed.');
           }
         } catch (err) {
           btn.disabled = false;
-          btn.textContent = 'この日時で応募する';
+          btn.textContent = 'Confirm this date';
           showFormError('Network error: ' + err.message);
         }
       });
 
       document.getElementById('rs-none-btn').addEventListener('click', () => {
         showConfirmDialog(
-          '本当に「どれも都合がつかない」を送信しますか？\n今回の案件への応募は終了し、来月以降の案件案内をお待ちください。',
+          'Are you sure you want to send "None of these work"?\nYour application for this mission will be closed. We\'ll let you know about future opportunities.',
           () => handleNoneWorks(appId)
         );
       });
@@ -1372,7 +1372,7 @@
 
     async function handleNoneWorks(appId) {
       const noneBtn = document.getElementById('rs-none-btn');
-      if (noneBtn) { noneBtn.disabled = true; noneBtn.textContent = '送信中...'; }
+      if (noneBtn) { noneBtn.disabled = true; noneBtn.textContent = 'Sending...'; }
       try {
         const res = await fetch(GAS_URL, {
           method: 'POST',
@@ -1385,14 +1385,14 @@
         });
         const result = await res.json();
         if (result.ok) {
-          showSuccess('ご連絡ありがとうございました。\n来月以降の案件案内をお待ちください！');
+          showSuccess('Thank you for letting us know.\nWe\'ll notify you about future opportunities!');
           setTimeout(() => { try { liff.closeWindow(); } catch (_) {} }, 3000);
         } else {
-          if (noneBtn) { noneBtn.disabled = false; noneBtn.textContent = 'どれも都合がつきません'; }
-          showFormError(result.error || '送信に失敗しました');
+          if (noneBtn) { noneBtn.disabled = false; noneBtn.textContent = 'None of these work for me'; }
+          showFormError(result.error || 'Submission failed.');
         }
       } catch (err) {
-        if (noneBtn) { noneBtn.disabled = false; noneBtn.textContent = 'どれも都合がつきません'; }
+        if (noneBtn) { noneBtn.disabled = false; noneBtn.textContent = 'None of these work for me'; }
         showFormError('Network error: ' + err.message);
       }
     }
