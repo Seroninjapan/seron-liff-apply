@@ -815,6 +815,7 @@
           </div>
           <div class="field">
             <label class="field-label">Names</label>
+            <p style="font-size:12px;color:#718096;margin-bottom:8px;">Please enter the full name of each participant.</p>
             <div id="participant-names"></div>
             <span class="field-error" id="err-names">Please fill in all participant names.</span>
           </div>
@@ -1638,7 +1639,8 @@
         input.type = 'text';
         input.className = 'field-input';
         input.id = `name-${i}`;
-        input.placeholder = 'Name';
+        const placeholders = ['e.g. John Smith', 'e.g. Michael Kelly'];
+        input.placeholder = placeholders[i] || 'e.g. Full Name';
         input.autocomplete = 'off';
 
         if (i < existingValues.length && existingValues[i]) {
