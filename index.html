@@ -1219,9 +1219,14 @@
         : (data.participant_names != null && String(data.participant_names).trim() !== ''
             ? String(data.participant_names).split(',').map(s => s.trim()).filter(Boolean)
             : []);
-      const namesHtml = participantNames
-        .map(n => `<div class="readonly-value">• ${n}</div>`)
-        .join('');
+      const count = Number(data.participant_count) || participantNames.length || 1;
+      const nameInputsHtml = Array.from({ length: count }, (_, i) => `
+        <div class="name-field">
+          <p class="name-label">${i === 0 ? 'Participant 1 (You)' : `Participant ${i + 1}`}</p>
+          <input type="text" class="field-input" id="rs-name-${i}"
+            placeholder="Name" autocomplete="off"
+            value="${(participantNames[i] || '').replace(/"/g, '&quot;')}">
+        </div>`).join('');
 
       document.getElementById('app').innerHTML = `
         <div style="padding-bottom:32px;">
@@ -1271,9 +1276,10 @@
                   <span class="readonly-label">Number of participants</span>
                   <span class="readonly-value">${data.participant_count || ''}</span>
                 </div>
-                <div class="readonly-row">
-                  <span class="readonly-label">Names</span>
-                  ${namesHtml}
+                <div class="field">
+                  <label class="field-label">Names</label>
+                  <div id="rs-participant-names">${nameInputsHtml}</div>
+                  <span class="field-error" id="rs-err-names" style="display:none;">Please fill in all participant names.</span>
                 </div>
               </div>
             </div>
@@ -1332,6 +1338,15 @@
           document.getElementById('rs-err-date').style.display = 'block';
           return;
         }
+        const nameInputs = document.getElementById('rs-participant-names').querySelectorAll('.field-input');
+        const allNamesFilled = Array.from(nameInputs).every(el => el.value.trim() !== '');
+        if (!allNamesFilled) {
+          document.getElementById('rs-err-names').style.display = 'block';
+          return;
+        }
+        document.getElementById('rs-err-names').style.display = 'none';
+        const names = Array.from(nameInputs).map(el => el.value.trim());
+
         const btn = document.getElementById('rs-submit-btn');
         btn.disabled = true;
         btn.textContent = 'Submitting...';
@@ -1344,6 +1359,7 @@
               app_id: appId,
               choice: 'alt_date_selected',
               selected_date: selectedAltDate,
+              participant_names: names.join(','),
             }),
           });
           const result = await res.json();
