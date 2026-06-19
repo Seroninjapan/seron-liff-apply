@@ -534,6 +534,49 @@
       font-weight: 700;
     }
 
+    /* ==================== Case Details (new mode) ==================== */
+    .case-detail-body {
+      padding: 16px 16px 0;
+      font-size: 14px;
+      line-height: 1.75;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .case-avail-block {
+      margin: 16px 16px 0;
+      padding: 12px 14px;
+      background: #F7FAFC;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: #4A5568;
+      line-height: 1.65;
+      white-space: pre-wrap;
+    }
+
+    .case-gallery {
+      display: flex;
+      gap: 8px;
+      padding: 16px 16px 0;
+    }
+
+    .case-gallery img {
+      flex: 1;
+      min-width: 0;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      aspect-ratio: 4/3;
+      background: var(--border);
+    }
+
+    .case-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 16px 0;
+    }
+
     /* ==================== Reschedule ==================== */
     .info-banner {
       margin: 20px 0 0;
@@ -1430,6 +1473,33 @@
     }
 
     // ==================== Render ====================
+    function renderCaseDetails(data) {
+      const esc = str => String(str || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      const el = document.createElement('div');
+      el.id = 'case-details';
+      let html = '';
+
+      if (data.description) {
+        html += `<p class="case-detail-body">${esc(data.description)}</p>`;
+      }
+
+      if (data.availability_text) {
+        html += `<p class="case-avail-block">${esc(data.availability_text)}</p>`;
+      }
+
+      const galleryImgs = [data.image_2_url, data.image_3_url].filter(Boolean);
+      if (galleryImgs.length > 0) {
+        const imgs = galleryImgs.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('');
+        html += `<div class="case-gallery">${imgs}</div>`;
+      }
+
+      html += '<hr class="case-divider">';
+      el.innerHTML = html;
+      document.getElementById('case-header').insertAdjacentElement('afterend', el);
+    }
+
     function renderCaseHeader(data) {
       const header = document.getElementById('case-header');
       const heroHtml = data.image_1_url
@@ -1456,6 +1526,10 @@
       try {
         setLoadingText('Rendering form: header...');
         renderCaseHeader(data);
+
+        if (mode === 'new') {
+          renderCaseDetails(data);
+        }
 
         if (mode === 'reapply') {
           const banner = document.createElement('p');
