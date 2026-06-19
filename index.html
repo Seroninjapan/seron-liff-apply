@@ -942,13 +942,11 @@
 
     // ==================== Date/Time Picker ====================
     function getHoursForDate(dateStr) {
-      if (!caseData || !dateStr) return (caseData && caseData.business_hours) || '';
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const dow = new Date(year, month - 1, day).getDay();
-      const isWeekend = dow === 0 || dow === 6;
-      return (isWeekend && caseData.open_hours_weekend && caseData.open_hours_weekend.trim() !== '')
-        ? caseData.open_hours_weekend
-        : caseData.business_hours;
+      if (!caseData || !dateStr || !caseData.business_hours) return null;
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dow = new Date(y, m - 1, d).getDay();
+      const hours = caseData.business_hours[dow];
+      return (hours !== undefined && hours !== null) ? hours : null;
     }
 
     function parseTimeToMinutes(timeStr) {
@@ -961,6 +959,7 @@
     }
 
     function generateTimeSlots(businessHours) {
+      if (businessHours === null) return [];
       const slots = [];
       const ranges = (businessHours || '').split(',').map(s => s.trim()).filter(Boolean);
       if (ranges.length === 0) ranges.push('11:00-22:00');
@@ -977,8 +976,13 @@
       return slots;
     }
 
-    function formatBusinessHoursDisplay(str) {
-      return (str || '').split(',').map(s => s.trim()).join(' / ');
+    function formatBusinessHoursDisplay(hours) {
+      if (!hours || typeof hours !== 'object') return '';
+      const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return DOW.map((label, i) => {
+        const h = hours[i];
+        return h ? `${label}: ${h}` : `${label}: Closed`;
+      }).join(' / ');
     }
 
     function parseClosedDays(str) {
@@ -1043,7 +1047,10 @@
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 
         const isOutOfRange = dateObj < minDate || dateObj > maxDate;
-        const isClosed = !isOutOfRange && closedDays.includes(dow);
+        const isClosedByBH = !isOutOfRange && caseData &&
+          caseData.business_hours && typeof caseData.business_hours === 'object' &&
+          caseData.business_hours[dow] === null;
+        const isClosed = !isOutOfRange && (closedDays.includes(dow) || isClosedByBH);
         const isDisabled = isOutOfRange || isClosed;
         const isSelected = !isDisabled && dateStr === selectedDate;
 
@@ -1085,8 +1092,16 @@
     }
 
     function renderTimeSlots(hoursStr) {
-      const slots = generateTimeSlots(hoursStr);
       const container = document.getElementById('time-slots');
+      if (hoursStr === undefined) {
+        container.innerHTML = '<p style="font-size:13px;color:#718096;padding:8px 0;">Please select a date to see available times.</p>';
+        return;
+      }
+      if (hoursStr === null) {
+        container.innerHTML = '<p style="font-size:13px;color:#718096;padding:8px 0;">Closed on this day. Please select another date.</p>';
+        return;
+      }
+      const slots = generateTimeSlots(hoursStr);
       let html = '<div class="time-slots">';
       for (const slot of slots) {
         const cls = 'time-slot-btn' + (slot === selectedTime ? ' selected' : '');
@@ -1556,7 +1571,7 @@
         calendarYear = now.getFullYear();
         calendarMonth = now.getMonth();
         renderCalendar();
-        renderTimeSlots(data.business_hours);
+        renderTimeSlots(undefined); // no date selected yet; slots populate on date pick
 
         setLoadingText('Rendering form: participants...');
         participantCount = data.min_participants;
