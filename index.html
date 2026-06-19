@@ -941,6 +941,16 @@
     }
 
     // ==================== Date/Time Picker ====================
+    function getHoursForDate(dateStr) {
+      if (!caseData || !dateStr) return (caseData && caseData.business_hours) || '';
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const dow = new Date(year, month - 1, day).getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      return (isWeekend && caseData.open_hours_weekend && caseData.open_hours_weekend.trim() !== '')
+        ? caseData.open_hours_weekend
+        : caseData.business_hours;
+    }
+
     function parseTimeToMinutes(timeStr) {
       const [h, m] = (timeStr || '0:0').split(':').map(Number);
       return h * 60 + m;
@@ -1066,8 +1076,10 @@
       document.getElementById('calendar').querySelectorAll('.cal-cell[data-date]').forEach(cell => {
         cell.addEventListener('click', () => {
           selectedDate = cell.dataset.date;
+          selectedTime = '';
           document.getElementById('err-date').classList.remove('visible');
           renderCalendar();
+          renderTimeSlots(getHoursForDate(selectedDate));
         });
       });
     }
