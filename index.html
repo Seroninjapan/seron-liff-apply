@@ -977,6 +977,14 @@
       return slots;
     }
 
+    function formatArea(raw) {
+      if (!raw) return '';
+      return String(raw).split(',')
+        .map(s => s.trim()).filter(Boolean)
+        .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+        .join(', ');
+    }
+
     function formatBusinessHoursDisplay(hours) {
       if (!hours || typeof hours !== 'object') return '';
       const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1540,11 +1548,7 @@
           <div class="case-meta">
             <div class="case-meta-row">
               <span class="case-meta-icon">📍</span>
-              <span>${data.area}</span>
-            </div>
-            <div class="case-meta-row">
-              <span class="case-meta-icon">🕐</span>
-              <span>${formatBusinessHoursDisplay(data.business_hours)}</span>
+              <span>${formatArea(data.area)}</span>
             </div>
           </div>
         </div>`;
