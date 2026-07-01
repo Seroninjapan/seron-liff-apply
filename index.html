@@ -285,7 +285,23 @@
     .name-label {
       font-size: 12px;
       color: #718096;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+    }
+
+    .name-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .name-col {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .name-sub-label {
+      font-size: 11px;
+      color: #718096;
+      margin-bottom: 3px;
     }
 
     /* Checkboxes */
@@ -817,7 +833,7 @@
             <label class="field-label">Names</label>
             <p style="font-size:12px;color:#718096;margin-bottom:8px;">Please enter the full name of each participant.</p>
             <div id="participant-names"></div>
-            <span class="field-error" id="err-names">Please fill in all participant names.</span>
+            <span class="field-error" id="err-names">Please enter both first and last name.</span>
           </div>
         </div>
       </div>
@@ -1299,14 +1315,29 @@
             ? String(data.participant_names).split(',').map(s => s.trim()).filter(Boolean)
             : []);
       const count = Number(data.participant_count) || participantNames.length || 1;
-      const placeholders = ['e.g. John Smith', 'e.g. Michael Kelly'];
-      const nameInputsHtml = Array.from({ length: count }, (_, i) => `
-        <div class="name-field">
-          <p class="name-label">${i === 0 ? 'Participant 1 (You)' : `Participant ${i + 1}`}</p>
-          <input type="text" class="field-input" id="rs-name-${i}"
-            placeholder="${placeholders[i] || 'e.g. Full Name'}" autocomplete="off"
-            value="${(participantNames[i] || '').replace(/"/g, '&quot;')}">
-        </div>`).join('');
+      const nameInputsHtml = Array.from({ length: count }, (_, i) => {
+        const full = participantNames[i] || '';
+        const spaceIdx = full.indexOf(' ');
+        const firstName = (spaceIdx >= 0 ? full.slice(0, spaceIdx) : full).replace(/"/g, '&quot;');
+        const lastName  = (spaceIdx >= 0 ? full.slice(spaceIdx + 1) : '').replace(/"/g, '&quot;');
+        const lbl = i === 0 ? 'Participant 1 (You)' : `Participant ${i + 1}`;
+        return `
+          <div class="name-field">
+            <p class="name-label">${lbl}</p>
+            <div class="name-row">
+              <div class="name-col">
+                <p class="name-sub-label">First Name</p>
+                <input type="text" class="field-input" id="rs-name-${i}-first"
+                  placeholder="e.g. Thomas" autocomplete="off" value="${firstName}">
+              </div>
+              <div class="name-col">
+                <p class="name-sub-label">Last Name</p>
+                <input type="text" class="field-input" id="rs-name-${i}-last"
+                  placeholder="e.g. Smith" autocomplete="off" value="${lastName}">
+              </div>
+            </div>
+          </div>`;
+      }).join('');
 
       document.getElementById('app').innerHTML = `
         <div style="padding-bottom:32px;">
@@ -1360,7 +1391,7 @@
                   <label class="field-label">Names</label>
                   <p style="font-size:12px;color:#718096;margin-bottom:8px;">Please enter the full name of each participant.</p>
                   <div id="rs-participant-names">${nameInputsHtml}</div>
-                  <span class="field-error" id="rs-err-names" style="display:none;">Please fill in all participant names.</span>
+                  <span class="field-error" id="rs-err-names" style="display:none;">Please enter both first and last name.</span>
                 </div>
               </div>
             </div>
@@ -1419,14 +1450,23 @@
           document.getElementById('rs-err-date').style.display = 'block';
           return;
         }
-        const nameInputs = document.getElementById('rs-participant-names').querySelectorAll('.field-input');
-        const allNamesFilled = Array.from(nameInputs).every(el => el.value.trim() !== '');
-        if (!allNamesFilled) {
+        let rsAllFilled = true;
+        for (let i = 0; i < count; i++) {
+          const f = document.getElementById(`rs-name-${i}-first`);
+          const l = document.getElementById(`rs-name-${i}-last`);
+          if (!f?.value.trim() || !l?.value.trim()) { rsAllFilled = false; break; }
+        }
+        if (!rsAllFilled) {
           document.getElementById('rs-err-names').style.display = 'block';
           return;
         }
         document.getElementById('rs-err-names').style.display = 'none';
-        const names = Array.from(nameInputs).map(el => el.value.trim());
+        const names = [];
+        for (let i = 0; i < count; i++) {
+          const first = (document.getElementById(`rs-name-${i}-first`)?.value || '').trim();
+          const last  = (document.getElementById(`rs-name-${i}-last`)?.value  || '').trim();
+          names.push(`${first} ${last}`.trim());
+        }
 
         const btn = document.getElementById('rs-submit-btn');
         btn.disabled = true;
@@ -1626,8 +1666,13 @@
 
     function updateParticipantNames(count) {
       const container = document.getElementById('participant-names');
-      const existing = container.querySelectorAll('.field-input');
-      const existingValues = Array.from(existing).map(el => el.value);
+
+      // Preserve existing first/last values before clearing
+      const existingFirst = [], existingLast = [];
+      for (let i = 0; i < count; i++) {
+        existingFirst.push((document.getElementById(`name-${i}-first`) || {}).value || '');
+        existingLast.push((document.getElementById(`name-${i}-last`) || {}).value || '');
+      }
 
       container.innerHTML = '';
 
@@ -1639,20 +1684,31 @@
         label.className = 'name-label';
         label.textContent = i === 0 ? 'Participant 1 (You)' : `Participant ${i + 1}`;
 
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'field-input';
-        input.id = `name-${i}`;
-        const placeholders = ['e.g. John Smith', 'e.g. Michael Kelly'];
-        input.placeholder = placeholders[i] || 'e.g. Full Name';
-        input.autocomplete = 'off';
+        const row = document.createElement('div');
+        row.className = 'name-row';
 
-        if (i < existingValues.length && existingValues[i]) {
-          input.value = existingValues[i];
-        }
+        const makeCol = (suffix, subLabel, placeholder, existingVal) => {
+          const col = document.createElement('div');
+          col.className = 'name-col';
+          const sl = document.createElement('p');
+          sl.className = 'name-sub-label';
+          sl.textContent = subLabel;
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.className = 'field-input';
+          inp.id = `name-${i}-${suffix}`;
+          inp.placeholder = placeholder;
+          inp.autocomplete = 'off';
+          if (existingVal) inp.value = existingVal;
+          col.appendChild(sl);
+          col.appendChild(inp);
+          return col;
+        };
 
+        row.appendChild(makeCol('first', 'First Name', 'e.g. Thomas', existingFirst[i]));
+        row.appendChild(makeCol('last',  'Last Name',  'e.g. Smith',  existingLast[i]));
         wrap.appendChild(label);
-        wrap.appendChild(input);
+        wrap.appendChild(row);
         container.appendChild(wrap);
       }
     }
@@ -1675,8 +1731,12 @@
       setError('err-date', !dateVal);
       setError('err-time', !timeVal);
 
-      const inputs = document.getElementById('participant-names').querySelectorAll('.field-input');
-      const allNamesFilled = Array.from(inputs).every(el => el.value.trim() !== '');
+      let allNamesFilled = true;
+      for (let i = 0; i < participantCount; i++) {
+        const f = document.getElementById(`name-${i}-first`);
+        const l = document.getElementById(`name-${i}-last`);
+        if (!f || !f.value.trim() || !l || !l.value.trim()) { allNamesFilled = false; break; }
+      }
       setError('err-names', !allNamesFilled);
 
       setError('err-checks', !(check1 && check2 && check3));
@@ -1708,8 +1768,12 @@
 
       if (!validate()) return;
 
-      const nameInputs = document.getElementById('participant-names').querySelectorAll('.field-input');
-      const participantNames = Array.from(nameInputs).map(el => el.value.trim());
+      const participantNames = [];
+      for (let i = 0; i < participantCount; i++) {
+        const first = (document.getElementById(`name-${i}-first`)?.value || '').trim();
+        const last  = (document.getElementById(`name-${i}-last`)?.value  || '').trim();
+        participantNames.push(`${first} ${last}`.trim());
+      }
 
       const formData = {
         action: 'apply',
