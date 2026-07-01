@@ -1322,6 +1322,8 @@
         const firstName = (spaceIdx >= 0 ? full.slice(0, spaceIdx) : full).replace(/"/g, '&quot;');
         const lastName  = (spaceIdx >= 0 ? full.slice(spaceIdx + 1) : '').replace(/"/g, '&quot;');
         const lbl = i === 0 ? 'Participant 1 (You)' : `Participant ${i + 1}`;
+        const rsFPH = ['e.g. John', 'e.g. Jane', 'e.g. Michael', 'e.g. Sarah'];
+        const rsLPH = ['e.g. Smith', 'e.g. Smith', 'e.g. Johnson', 'e.g. Brown'];
         return `
           <div class="name-field">
             <p class="name-label">${lbl}</p>
@@ -1329,12 +1331,12 @@
               <div class="name-col">
                 <p class="name-sub-label">First Name</p>
                 <input type="text" class="field-input" id="rs-name-${i}-first"
-                  placeholder="e.g. Thomas" autocomplete="off" value="${firstName}">
+                  placeholder="${rsFPH[i] || 'e.g. First Name'}" autocomplete="off" value="${firstName}">
               </div>
               <div class="name-col">
                 <p class="name-sub-label">Last Name</p>
                 <input type="text" class="field-input" id="rs-name-${i}-last"
-                  placeholder="e.g. Smith" autocomplete="off" value="${lastName}">
+                  placeholder="${rsLPH[i] || 'e.g. Last Name'}" autocomplete="off" value="${lastName}">
               </div>
             </div>
           </div>`;
@@ -1707,8 +1709,10 @@
           return col;
         };
 
-        row.appendChild(makeCol('first', 'First Name', 'e.g. Thomas', existingFirst[i]));
-        row.appendChild(makeCol('last',  'Last Name',  'e.g. Smith',  existingLast[i]));
+        const firstPH = ['e.g. John', 'e.g. Jane', 'e.g. Michael', 'e.g. Sarah'];
+        const lastPH  = ['e.g. Smith', 'e.g. Smith', 'e.g. Johnson', 'e.g. Brown'];
+        row.appendChild(makeCol('first', 'First Name', firstPH[i] || 'e.g. First Name', existingFirst[i]));
+        row.appendChild(makeCol('last',  'Last Name',  lastPH[i]  || 'e.g. Last Name',  existingLast[i]));
         wrap.appendChild(label);
         wrap.appendChild(row);
         container.appendChild(wrap);
